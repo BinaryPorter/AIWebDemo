@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄时钟 - Pomodoro Timer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .mode-btn:hover {
+            background: #d0d0d0;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .mode-btn.active[data-mode="work"] {
+            background: #e74c3c;
+        }
+
+        .mode-btn.active[data-mode="short-break"] {
+            background: #2ecc71;
+        }
+
+        .mode-btn.active[data-mode="long-break"] {
+            background: #3498db;
+        }
+
+        .timer-display {
+            font-size: 80px;
+            font-weight: bold;
+            color: #333;
+            margin: 30px 0;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -2px;
+        }
+
+        .timer-display.break {
+            color: #2ecc71;
+        }
+
+        .timer-display.work {
+            color: #e74c3c;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .control-btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .start-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .start-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .start-btn.running {
+            background: #f39c12;
+        }
+
+        .reset-btn {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+        }
+
+        .stats {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .stats h3 {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            transition: width 1s linear;
+        }
+
+        .progress.work {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .progress.break {
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .running {
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍅 番茄时钟</h1>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="work" data-time="25">工作</button>
+            <button class="mode-btn" data-mode="short-break" data-time="5">短休息</button>
+            <button class="mode-btn" data-mode="long-break" data-time="15">长休息</button>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress work" id="progress" style="width: 100%"></div>
+        </div>
+
+        <div class="timer-display work" id="timer">25:00</div>
+
+        <div class="controls">
+            <button class="control-btn start-btn" id="startBtn">开始</button>
+            <button class="control-btn reset-btn" id="resetBtn">重置</button>
+        </div>
+
+        <div class="stats">
+            <h3>今日统计</h3>
+            <div class="stat-row">
+                <span class="stat-label">完成番茄数</span>
+                <span class="stat-value" id="pomodoroCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">工作时间</span>
+                <span class="stat-value" id="workTime">0分钟</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">休息时间</span>
+                <span class="stat-value" id="breakTime">0分钟</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MODES = {
+            'work': { time: 25, color: 'work' },
+            'short-break': { time: 5, color: 'break' },
+            'long-break': { time: 15, color: 'break' }
+        };
+
+        let currentMode = 'work';
+        let timeLeft = MODES[currentMode].time * 60;
+        let totalTime = timeLeft;
+        let isRunning = false;
+        let timerInterval = null;
+        let stats = {
+            pomodoros: 0,
+            workMinutes: 0,
+            breakMinutes: 0
+        };
+
+        const timerDisplay = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const progress = document.getElementById('progress');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            timerDisplay.textContent = formatTime(timeLeft);
+            const percentage = ((totalTime - timeLeft) / totalTime) * 100;
+            progress.style.width = percentage + '%';
+        }
+
+        function updateStats() {
+            document.getElementById('pomodoroCount').textContent = stats.pomodoros;
+            document.getElementById('workTime').textContent = stats.workMinutes + '分钟';
+            document.getElementById('breakTime').textContent = stats.breakMinutes + '分钟';
+        }
+
+        function switchMode(mode) {
+            if (isRunning) {
+                stopTimer();
+            }
+
+            currentMode = mode;
+            totalTime = MODES[mode].time * 60;
+            timeLeft = totalTime;
+
+            modeButtons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('active');
+                }
+            });
+
+            timerDisplay.className = 'timer-display ' + MODES[mode].color;
+            progress.className = 'progress ' + MODES[mode].color;
+            updateDisplay();
+        }
+
+        function startTimer() {
+            if (isRunning) {
+                stopTimer();
+                return;
+            }
+
+            isRunning = true;
+            startBtn.textContent = '暂停';
+            startBtn.classList.add('running');
+            timerDisplay.classList.add('running');
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+
+                if (timeLeft <= 0) {
+                    // Timer completed
+                    stopTimer();
+
+                    // Update stats
+                    if (currentMode === 'work') {
+                        stats.pomodoros++;
+                        stats.workMinutes += MODES[currentMode].time;
+                    } else {
+                        stats.breakMinutes += MODES[currentMode].time;
+                    }
+                    updateStats();
+
+                    // Play notification sound
+                    playNotification();
+
+                    // Auto-switch to next mode
+                    if (currentMode === 'work') {
+                        if (stats.pomodoros % 4 === 0) {
+                            switchMode('long-break');
+                        } else {
+                            switchMode('short-break');
+                        }
+                    } else {
+                        switchMode('work');
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            startBtn.textContent = '开始';
+            startBtn.classList.remove('running');
+            timerDisplay.classList.remove('running');
+        }
+
+        function resetTimer() {
+            stopTimer();
+            timeLeft = totalTime;
+            updateDisplay();
+        }
+
+        function playNotification() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        startBtn.addEventListener('click', startTimer);
+        resetBtn.addEventListener('click', resetTimer);
+
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchMode(btn.dataset.mode);
+            });
+        });
+
+        // Initialize
+        updateDisplay();
+        updateStats();
+    </script>
+</body>
+</html>
